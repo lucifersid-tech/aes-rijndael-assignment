@@ -189,7 +189,16 @@ void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  
+  int nb = block_size_to_cols(block_size);
+    unsigned char tmp[64];
+ 
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < nb; col++) {
+            /* shift right: source column is (col - row + nb) % nb */
+            tmp[row * nb + col] = block[row * nb + ((col - row + nb) % nb)];
+        }
+    }
+    memcpy(block, tmp, 4 * nb);
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {

@@ -97,6 +97,14 @@ def py_shift_rows(block, nb):
             out[row * nb + col] = state[row * nb + (col + row) % nb]
     return bytes(out)
 
+def py_inv_shift_rows(block, nb):
+    state = list(block)
+    out = [0] * len(state)
+    for row in range(4):
+        for col in range(nb):
+            out[row * nb + col] = state[row * nb + (col - row) % nb]
+    return bytes(out)
+
 def c_sub_bytes(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.sub_bytes(buf, bs)
@@ -110,6 +118,11 @@ def c_inv_sub_bytes(block, bs):
 def c_shift_rows(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.shift_rows(buf, bs)
+    return bytes(buf)
+
+def c_inv_shift_rows(block, bs):
+    buf = ctypes.create_string_buffer(bytes(block), len(block))
+    lib.invert_shift_rows(buf, bs)
     return bytes(buf)
 
 def rand_block(n):
@@ -156,6 +169,22 @@ class TestShiftRows(unittest.TestCase):
                 block = rand_block(sz)
                 self.assertEqual(c_shift_rows(block, bs), py_shift_rows(block, nb),
                                  f"shift_rows mismatch for block_size={sz}")
+                
+    def test_inv_shift_rows_matches_reference(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                self.assertEqual(c_inv_shift_rows(block, bs), py_inv_shift_rows(block, nb),
+                                 f"inv_shift_rows mismatch for block_size={sz}")
+ 
+    def test_shift_rows_invertible(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                shifted   = c_shift_rows(block, bs)
+                recovered = c_inv_shift_rows(shifted, bs)
+                self.assertEqual(recovered, block,
+                                 "shift_rows -> inv_shift_rows should return original")
 
 
 if __name__ == "__main__":
