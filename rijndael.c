@@ -160,3 +160,67 @@ void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
         block[i] = sbox[block[i]];
     }
 }
+
+void shift_rows(unsigned char *block, aes_block_size_t block_size) {
+  // TODO: Implement me!
+}
+
+void mix_columns(unsigned char *block, aes_block_size_t block_size) {
+  // TODO: Implement me!
+}
+
+/*
+ * Operations used when decrypting a block
+ */
+void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
+  // TODO: Implement me!
+}
+
+void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
+  // TODO: Implement me!
+}
+
+void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
+  // TODO: Implement me!
+}
+
+/*
+ * This operation is shared between encryption and decryption
+ */
+void add_round_key(unsigned char *block, 
+                   unsigned char *round_key,
+                   aes_block_size_t block_size) {
+  // TODO: Implement me!
+}
+
+/*
+ * This function should expand the round key. Given an input,
+ * which is a single 128-bit key, it should return a 176-byte
+ * vector, containing the 11 round keys one after the other
+ */
+unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size) {
+  // TODO: Implement me!
+  return 0;
+}
+
+/*
+ * The implementations of the functions declared in the
+ * header file should go here
+ */
+unsigned char *aes_encrypt_block(unsigned char *plaintext,
+                                 unsigned char *key,
+                                 aes_block_size_t block_size) {
+  // TODO: Implement me!
+  unsigned char *output =
+      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
+  return output;
+}
+
+unsigned char *aes_decrypt_block(unsigned char *ciphertext,
+                                 unsigned char *key,
+                                 aes_block_size_t block_size) {
+  // TODO: Implement me!
+  unsigned char *output =
+      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
+  return output;
+}
