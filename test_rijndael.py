@@ -263,6 +263,14 @@ class TestAddRoundKey(unittest.TestCase):
                 lib.add_round_key(buf, key, bs)
                 self.assertEqual(bytes(buf), expected,
                                  f"add_round_key should XOR block with key for block_size={sz}")
+                
+class TestKeyExpansion(unittest.TestCase):
+    def test_expand_key_length(self):
+        for bs, sz, nb in BS_SIZES:
+            for key_size in [16, 24, 32]:
+                key = rand_block(key_size)
+                rk_ptr = lib.expand_key(key, bs)
+                self.assertIsNotNone(rk_ptr, f"expand_key should return non-null pointer for block_size={sz} and key_size={key_size}")
 
 
 if __name__ == "__main__":

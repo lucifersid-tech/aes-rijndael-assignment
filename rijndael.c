@@ -241,13 +241,71 @@ void add_round_key(unsigned char *block,
     }
 }
 
-/*
- * This function should expand the round key. Given an input,
- * which is a single 128-bit key, it should return a 176-byte
- * vector, containing the 11 round keys one after the other
- */
+static void sub_word(unsigned char *word) {
+    for (int i = 0; i < 4; i++) {
+        word[i] = sbox[word[i]];
+    }
+}
+
+static void rot_word(unsigned char *word) {
+    unsigned char tmp = word[0];
+    word[0] = word[1];
+    word[1] = word[2];
+    word[2] = word[3];
+    word[3] = tmp;
+}
+
 unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size) {
-  // TODO: Implement me!
+      int nb     = block_size_to_cols(block_size); 
+    int nk     = nb;                             
+    int nr     = block_size_to_rounds(block_size);
+    int total  = nb * (nr + 1);                 
+    size_t len = total * 4;                      
+ 
+    unsigned char *w = (unsigned char *)malloc(len);
+    if (!w) { perror("malloc"); exit(1); }
+
+    memcpy(w, cipher_key, nk * 4);
+ 
+    unsigned char temp[4];
+ 
+    for (int i = nk; i < total; i++) {
+       
+        memcpy(temp, &w[(i - 1) * 4], 4);
+ 
+        if (i % nk == 0) {
+            rot_word(temp);
+            sub_word(temp);
+            temp[0] ^= rcon[(i / nk) - 1];
+        } else if (nk > 6 && (i % nk) == 4) {
+         
+            sub_word(temp);
+        }
+ 
+        /* w[i] = w[i-Nk] XOR temp */
+        for (int j = 0; j < 4; j++) {
+            w[i * 4 + j] = w[(i - nk) * 4 + j] ^ temp[j];
+        }
+    }
+ 
+    size_t block_bytes = block_size_to_bytes(block_size);
+    unsigned char *rk = (unsigned char *)malloc(len);
+    if (!rk) { perror("malloc"); exit(1); }
+ 
+    for (int rnd = 0; rnd <= nr; rnd++) {
+       
+        unsigned char *src = &w[rnd * nb * 4];
+        unsigned char *dst = &rk[rnd * block_bytes];
+ 
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < nb; col++) {
+                dst[row * nb + col] = src[col * 4 + row];
+            }
+        }
+    }
+ 
+    free(w);
+    return rk;
   return 0;
 }
 
@@ -258,7 +316,7 @@ unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size
 unsigned char *aes_encrypt_block(unsigned char *plaintext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  // TODO: Implement me!
+  
   unsigned char *output =
       (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
   return output;
