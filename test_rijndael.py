@@ -127,6 +127,16 @@ def py_mix_columns(block, nb):
         state[3 * nb + col] = gf_mul(3, s[0]) ^ s[1] ^ s[2] ^ gf_mul(2, s[3])
     return bytes(state)
 
+def py_inv_mix_columns(block, nb):
+    state = list(block)
+    for col in range(nb):
+        s = [state[row * nb + col] for row in range(4)]
+        state[0 * nb + col] = gf_mul(0x0e,s[0])^gf_mul(0x0b,s[1])^gf_mul(0x0d,s[2])^gf_mul(0x09,s[3])
+        state[1 * nb + col] = gf_mul(0x09,s[0])^gf_mul(0x0e,s[1])^gf_mul(0x0b,s[2])^gf_mul(0x0d,s[3])
+        state[2 * nb + col] = gf_mul(0x0d,s[0])^gf_mul(0x09,s[1])^gf_mul(0x0e,s[2])^gf_mul(0x0b,s[3])
+        state[3 * nb + col] = gf_mul(0x0b,s[0])^gf_mul(0x0d,s[1])^gf_mul(0x09,s[2])^gf_mul(0x0e,s[3])
+    return bytes(state)
+
 def c_sub_bytes(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.sub_bytes(buf, bs)
@@ -150,6 +160,11 @@ def c_inv_shift_rows(block, bs):
 def c_mix_columns(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.mix_columns(buf, bs)
+    return bytes(buf)
+
+def c_inv_mix_columns(block, bs):
+    buf = ctypes.create_string_buffer(bytes(block), len(block))
+    lib.invert_mix_columns(buf, bs)
     return bytes(buf)
 
 def rand_block(n):
@@ -220,6 +235,23 @@ class TestMixColumns(unittest.TestCase):
                 block = rand_block(sz)
                 self.assertEqual(c_mix_columns(block, bs), py_mix_columns(block, nb),
                                  f"mix_columns mismatch for block_size={sz}")
+                
+    def test_inv_mix_columns_matches_reference(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                self.assertEqual(c_inv_mix_columns(block, bs), py_inv_mix_columns(block, nb),
+                                 f"inv_mix_columns mismatch for block_size={sz}")
+ 
+    def test_mix_columns_invertible(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                mixed     = c_mix_columns(block, bs)
+                recovered = c_inv_mix_columns(mixed, bs)
+                self.assertEqual(recovered, block,
+                                 "mix_columns -> inv_mix_columns should return original")
+
 
 
 if __name__ == "__main__":

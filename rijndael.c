@@ -214,7 +214,19 @@ void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  int nb = block_size_to_cols(block_size);
+ 
+    for (int col = 0; col < nb; col++) {
+        unsigned char s0 = block[0 * nb + col];
+        unsigned char s1 = block[1 * nb + col];
+        unsigned char s2 = block[2 * nb + col];
+        unsigned char s3 = block[3 * nb + col];
+ 
+        block[0 * nb + col] = gf_mul(0x0e, s0) ^ gf_mul(0x0b, s1) ^ gf_mul(0x0d, s2) ^ gf_mul(0x09, s3);
+        block[1 * nb + col] = gf_mul(0x09, s0) ^ gf_mul(0x0e, s1) ^ gf_mul(0x0b, s2) ^ gf_mul(0x0d, s3);
+        block[2 * nb + col] = gf_mul(0x0d, s0) ^ gf_mul(0x09, s1) ^ gf_mul(0x0e, s2) ^ gf_mul(0x0b, s3);
+        block[3 * nb + col] = gf_mul(0x0b, s0) ^ gf_mul(0x0d, s1) ^ gf_mul(0x09, s2) ^ gf_mul(0x0e, s3);
+    }
 }
 
 /*
