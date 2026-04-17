@@ -14,7 +14,7 @@ void print_block(unsigned char *block, aes_block_size_t block_size) {
 
       if (value < 100) printf(" ");
 
-      printf("%d", value);
+      printf("%d ", value);
     }
     printf("\n");
   }

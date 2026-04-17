@@ -316,17 +316,65 @@ unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size
 unsigned char *aes_encrypt_block(unsigned char *plaintext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  
-  unsigned char *output =
-      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
-  return output;
+                                  size_t bytes = block_size_to_bytes(block_size);
+    int nr = block_size_to_rounds(block_size);
+ 
+    /* Allocate working state and output */
+    unsigned char *state = (unsigned char *)malloc(bytes);
+    if (!state) { perror("malloc"); exit(1); }
+    memcpy(state, plaintext, bytes);
+ 
+    /* Expand key */
+    unsigned char *round_keys = expand_key(key, block_size);
+ 
+    /* Initial round key addition */
+    add_round_key(state, &round_keys[0], block_size);
+ 
+    /* Main rounds */
+    for (int round = 1; round < nr; round++) {
+        sub_bytes(state, block_size);
+        shift_rows(state, block_size);
+        mix_columns(state, block_size);
+        add_round_key(state, &round_keys[round * bytes], block_size);
+    }
+ 
+    /* Final round (no MixColumns) */
+    sub_bytes(state, block_size);
+    shift_rows(state, block_size);
+    add_round_key(state, &round_keys[nr * bytes], block_size);
+ 
+    free(round_keys);
+    return state; /* caller frees */
 }
 
 unsigned char *aes_decrypt_block(unsigned char *ciphertext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  // TODO: Implement me!
-  unsigned char *output =
-      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
-  return output;
+      size_t bytes = block_size_to_bytes(block_size);
+    int nr = block_size_to_rounds(block_size);
+ 
+    unsigned char *state = (unsigned char *)malloc(bytes);
+    if (!state) { perror("malloc"); exit(1); }
+    memcpy(state, ciphertext, bytes);
+ 
+    unsigned char *round_keys = expand_key(key, block_size);
+ 
+    /* Start with last round key */
+    add_round_key(state, &round_keys[nr * bytes], block_size);
+ 
+    /* Middle rounds in reverse */
+    for (int round = nr - 1; round >= 1; round--) {
+        invert_shift_rows(state, block_size);
+        invert_sub_bytes(state, block_size);
+        add_round_key(state, &round_keys[round * bytes], block_size);
+        invert_mix_columns(state, block_size);
+    }
+ 
+    /* Final (initial) round */
+    invert_shift_rows(state, block_size);
+    invert_sub_bytes(state, block_size);
+    add_round_key(state, &round_keys[0], block_size);
+ 
+    free(round_keys);
+    return state; /* caller frees */
 }

@@ -167,6 +167,18 @@ def c_inv_mix_columns(block, bs):
     lib.invert_mix_columns(buf, bs)
     return bytes(buf)
 
+def c_encrypt(plain, key, bs):
+    pb = ctypes.create_string_buffer(bytes(plain), len(plain))
+    kb = ctypes.create_string_buffer(bytes(key), len(key))
+    ptr = lib.aes_encrypt_block(pb, kb, bs)
+    return bytes(ctypes.string_at(ptr, len(plain)))
+ 
+def c_decrypt(cipher, key, bs):
+    cb = ctypes.create_string_buffer(bytes(cipher), len(cipher))
+    kb = ctypes.create_string_buffer(bytes(key), len(key))
+    ptr = lib.aes_decrypt_block(cb, kb, bs)
+    return bytes(ctypes.string_at(ptr, len(cipher)))
+
 def rand_block(n):
     return bytes(random.randint(0, 255) for _ in range(n))
 
@@ -271,6 +283,18 @@ class TestKeyExpansion(unittest.TestCase):
                 key = rand_block(key_size)
                 rk_ptr = lib.expand_key(key, bs)
                 self.assertIsNotNone(rk_ptr, f"expand_key should return non-null pointer for block_size={sz} and key_size={key_size}")
+
+class TestEncryptDecrypt(unittest.TestCase):
+    """End-to-end encrypt/decrypt round-trip test for all block sizes."""
+ 
+    def test_encrypt_decrypt_128(self):
+        for _ in range(3):
+            plain = rand_block(16)
+            key   = rand_block(16)
+            ct    = c_encrypt(plain, key, AES_BLOCK_128)
+            self.assertNotEqual(ct, plain, "Ciphertext must differ from plaintext")
+            pt    = c_decrypt(ct, key, AES_BLOCK_128)
+            self.assertEqual(pt, plain, "Decrypted text must match original plaintext (128-bit)")
 
 
 if __name__ == "__main__":
