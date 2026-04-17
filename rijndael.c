@@ -173,7 +173,10 @@ void mix_columns(unsigned char *block, aes_block_size_t block_size) {
  * Operations used when decrypting a block
  */
 void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  size_t len = block_size_to_bytes(block_size);
+    for (size_t i = 0; i < len; i++) {
+        block[i] = inv_sbox[block[i]];
+    }
 }
 
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {

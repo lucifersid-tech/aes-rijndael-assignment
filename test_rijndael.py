@@ -85,9 +85,17 @@ for i, v in enumerate(SBOX):
 def py_sub_bytes(block):
     return bytes(SBOX[b] for b in block)
 
+def py_inv_sub_bytes(block):
+    return bytes(INV_SBOX[b] for b in block)
+
 def c_sub_bytes(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.sub_bytes(buf, bs)
+    return bytes(buf)
+
+def c_inv_sub_bytes(block, bs):
+    buf = ctypes.create_string_buffer(bytes(block), len(block))
+    lib.invert_sub_bytes(buf, bs)
     return bytes(buf)
 
 def rand_block(n):
@@ -110,6 +118,24 @@ class TestSubBytes(unittest.TestCase):
                 block = rand_block(sz)
                 self.assertEqual(c_sub_bytes(block, bs), py_sub_bytes(block),
                                  f"sub_bytes mismatch for block_size={sz}")
+                
+    def test_inv_sub_bytes_matches_reference(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                self.assertEqual(c_inv_sub_bytes(block, bs), py_inv_sub_bytes(block),
+                                 f"inv_sub_bytes mismatch for block_size={sz}")
+ 
+    def test_sub_bytes_invertible(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                sub = c_sub_bytes(block, bs)
+                recovered = c_inv_sub_bytes(sub, bs)
+                self.assertEqual(recovered, block,
+                                 "sub_bytes -> inv_sub_bytes should return original")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
