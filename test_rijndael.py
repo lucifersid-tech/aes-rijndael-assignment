@@ -105,6 +105,28 @@ def py_inv_shift_rows(block, nb):
             out[row * nb + col] = state[row * nb + (col - row) % nb]
     return bytes(out)
 
+def gf_mul(a, b):
+    result = 0
+    for _ in range(8):
+        if b & 1:
+            result ^= a
+        hi = a & 0x80
+        a = (a << 1) & 0xff
+        if hi:
+            a ^= 0x1b
+        b >>= 1
+    return result
+
+def py_mix_columns(block, nb):
+    state = list(block)
+    for col in range(nb):
+        s = [state[row * nb + col] for row in range(4)]
+        state[0 * nb + col] = gf_mul(2, s[0]) ^ gf_mul(3, s[1]) ^ s[2] ^ s[3]
+        state[1 * nb + col] = s[0] ^ gf_mul(2, s[1]) ^ gf_mul(3, s[2]) ^ s[3]
+        state[2 * nb + col] = s[0] ^ s[1] ^ gf_mul(2, s[2]) ^ gf_mul(3, s[3])
+        state[3 * nb + col] = gf_mul(3, s[0]) ^ s[1] ^ s[2] ^ gf_mul(2, s[3])
+    return bytes(state)
+
 def c_sub_bytes(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.sub_bytes(buf, bs)
@@ -123,6 +145,11 @@ def c_shift_rows(block, bs):
 def c_inv_shift_rows(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.invert_shift_rows(buf, bs)
+    return bytes(buf)
+
+def c_mix_columns(block, bs):
+    buf = ctypes.create_string_buffer(bytes(block), len(block))
+    lib.mix_columns(buf, bs)
     return bytes(buf)
 
 def rand_block(n):
@@ -185,6 +212,14 @@ class TestShiftRows(unittest.TestCase):
                 recovered = c_inv_shift_rows(shifted, bs)
                 self.assertEqual(recovered, block,
                                  "shift_rows -> inv_shift_rows should return original")
+                
+class TestMixColumns(unittest.TestCase):
+    def test_mix_columns_matches_reference(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                self.assertEqual(c_mix_columns(block, bs), py_mix_columns(block, nb),
+                                 f"mix_columns mismatch for block_size={sz}")
 
 
 if __name__ == "__main__":
