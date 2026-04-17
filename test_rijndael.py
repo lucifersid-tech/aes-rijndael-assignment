@@ -251,7 +251,18 @@ class TestMixColumns(unittest.TestCase):
                 recovered = c_inv_mix_columns(mixed, bs)
                 self.assertEqual(recovered, block,
                                  "mix_columns -> inv_mix_columns should return original")
-
+                
+class TestAddRoundKey(unittest.TestCase):
+    def test_add_round_key_xor(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                key   = rand_block(sz)
+                expected = bytes(b ^ k for b, k in zip(block, key))
+                buf = ctypes.create_string_buffer(bytes(block), len(block))
+                lib.add_round_key(buf, key, bs)
+                self.assertEqual(bytes(buf), expected,
+                                 f"add_round_key should XOR block with key for block_size={sz}")
 
 
 if __name__ == "__main__":
