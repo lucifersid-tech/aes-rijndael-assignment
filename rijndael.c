@@ -162,7 +162,16 @@ void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+   int nb = block_size_to_cols(block_size);
+    unsigned char tmp[64]; /* max block size */
+ 
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < nb; col++) {
+            /* read source column with wrap: (col + row) % nb */
+            tmp[row * nb + col] = block[row * nb + ((col + row) % nb)];
+        }
+    }
+    memcpy(block, tmp, 4 * nb);
 }
 
 void mix_columns(unsigned char *block, aes_block_size_t block_size) {
@@ -180,7 +189,7 @@ void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {

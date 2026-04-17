@@ -79,7 +79,7 @@ for i, v in enumerate(SBOX):
     INV_SBOX[v] = i
  
 # ---------------------------------------------------------------------------
-# Pure-Python reference implementations
+# reference implementations
 # ---------------------------------------------------------------------------
  
 def py_sub_bytes(block):
@@ -87,6 +87,15 @@ def py_sub_bytes(block):
 
 def py_inv_sub_bytes(block):
     return bytes(INV_SBOX[b] for b in block)
+
+def py_shift_rows(block, nb):
+    """block is bytes, nb is number of columns."""
+    state = list(block)
+    out = [0] * len(state)
+    for row in range(4):
+        for col in range(nb):
+            out[row * nb + col] = state[row * nb + (col + row) % nb]
+    return bytes(out)
 
 def c_sub_bytes(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
@@ -96,6 +105,11 @@ def c_sub_bytes(block, bs):
 def c_inv_sub_bytes(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.invert_sub_bytes(buf, bs)
+    return bytes(buf)
+
+def c_shift_rows(block, bs):
+    buf = ctypes.create_string_buffer(bytes(block), len(block))
+    lib.shift_rows(buf, bs)
     return bytes(buf)
 
 def rand_block(n):
@@ -134,6 +148,14 @@ class TestSubBytes(unittest.TestCase):
                 recovered = c_inv_sub_bytes(sub, bs)
                 self.assertEqual(recovered, block,
                                  "sub_bytes -> inv_sub_bytes should return original")
+                
+class TestShiftRows(unittest.TestCase):
+    def test_shift_rows_matches_reference(self):
+        for bs, sz, nb in BS_SIZES:
+            for _ in range(3):
+                block = rand_block(sz)
+                self.assertEqual(c_shift_rows(block, bs), py_shift_rows(block, nb),
+                                 f"shift_rows mismatch for block_size={sz}")
 
 
 if __name__ == "__main__":
