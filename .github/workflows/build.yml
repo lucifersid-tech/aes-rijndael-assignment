@@ -1,0 +1,16 @@
+name: Build the project
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build the code
+        run: |
+          sudo apt install -y build-essential python-is-python3
+          make
+      - name: Run unit tests
+        run: python test_rijndael.py
