@@ -4,19 +4,17 @@
 #include "rijndael.h"
  
 /*
- * print_block: display a block as a 4-row state matrix.
+ * print_block: print the 16 bytes of a block in flat sequential order.
  *
- * State is stored column-major: block[col * 4 + row].
- * Iterating row-outer, col-inner prints one state row per line,
- * matching the standard AES state diagram and boppreh/aes output.
+ * The AES state is stored column-major internally, but for display we
+ * print the raw bytes [0..15] left-to-right, 4 per line.  This matches
+ * the order boppreh/aes uses when it prints list(ct).
  */
 void print_block(unsigned char *block, aes_block_size_t block_size) {
-  for (int row = 0; row < 4; row++) {
-    for (int col = 0; col < 4; col++) {
-      unsigned char value = block_access(block, row, col, block_size);
-      printf("%4d", value);   /* fixed-width field: right-aligned in 4 chars */
-    }
-    printf("\n");
+  size_t len = 16; /* 128-bit block */
+  for (size_t i = 0; i < len; i++) {
+    printf("%4d", block[i]);
+    if ((i + 1) % 4 == 0) printf("\n");
   }
 }
  
