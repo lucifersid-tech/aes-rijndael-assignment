@@ -1,6 +1,7 @@
 /*
- * TODO: Add your name and student number here, along with
- *       a brief description of this code.
+ Siddharth Varma Raja (A00047237): Public header. Declares the aes_block_size_t enum, block_access,
+  all six sub-operation functions, expand_key, aes_encrypt_block and aes_decrypt_block.
+   All internal functions are exposed so the Python test suite can call them via ctypes.
  */
 
 #ifndef RIJNDAEL_H
