@@ -1,18 +1,3 @@
-/*
- * rijndael.c
- * AES (Rijndael) block cipher - column-major state layout (standard AES convention).
- *
- * STATE LAYOUT:
- *   Input bytes fill the state COLUMN by COLUMN:
- *     block[ col * 4 + row ] = state byte at (row, col)
- *   This matches NIST FIPS 197 and the boppreh/aes reference library.
- *
- * Block sizes:
- *   AES_BLOCK_128 => 16 bytes, 4 columns, 10 rounds
- *   AES_BLOCK_256 => 32 bytes, 8 columns, 14 rounds
- *   AES_BLOCK_512 => 64 bytes,16 columns, 22 rounds
- */
- 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,14 +43,12 @@ static const unsigned char inv_sbox[256] = {
     0x17,0x2b,0x04,0x7e,0xba,0x77,0xd6,0x26,0xe1,0x69,0x14,0x63,0x55,0x21,0x0c,0x7d
 };
  
-/* Rcon values for key schedule */
 static const unsigned char rcon[30] = {
     0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1b,0x36,
     0x6c,0xd8,0xab,0x4d,0x9a,0x2f,0x5e,0xbc,0x63,0xc6,
     0x97,0x35,0x6a,0xd4,0xb3,0x7d,0xfa,0xef,0xc5,0x91
 };
  
-/* ---- Block size helpers ---- */
 static size_t block_size_to_bytes(aes_block_size_t bs) {
     switch (bs) {
         case AES_BLOCK_128: return 16;
@@ -92,11 +75,7 @@ static int block_size_to_nr(aes_block_size_t bs) {
         default: return 10;
     }
 }
- 
-/*
- * block_access: read byte at (row, col) from column-major state.
- * Storage: block[col * 4 + row]
- */
+
 unsigned char block_access(unsigned char *block,
                            size_t row, size_t col,
                            aes_block_size_t block_size) {
@@ -104,7 +83,6 @@ unsigned char block_access(unsigned char *block,
     return block[col * 4 + row];
 }
  
-/* GF(2^8) multiply: a * b mod 0x11b */
 static unsigned char gf_mul(unsigned char a, unsigned char b) {
     unsigned char r = 0;
     for (int i = 0; i < 8; i++) {
@@ -116,8 +94,7 @@ static unsigned char gf_mul(unsigned char a, unsigned char b) {
     }
     return r;
 }
- 
-/* ---- SubBytes / InvSubBytes ---- */
+
 void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
     size_t len = block_size_to_bytes(block_size);
     for (size_t i = 0; i < len; i++) block[i] = sbox[block[i]];
@@ -127,14 +104,7 @@ void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
     size_t len = block_size_to_bytes(block_size);
     for (size_t i = 0; i < len; i++) block[i] = inv_sbox[block[i]];
 }
- 
-/*
- * ShiftRows: shift row i LEFT by i positions.
- *
- * Column-major storage: byte at (row, col) is block[col*4 + row].
- * Row i spans cols 0..Nb-1: block[0*4+i], block[1*4+i], ..., block[(Nb-1)*4+i]
- * Left-shift row i by i: new col c gets old col (c+i)%Nb.
- */
+
 void shift_rows(unsigned char *block, aes_block_size_t block_size) {
     int nb = block_size_to_nb(block_size);
     unsigned char tmp[64];
@@ -146,10 +116,7 @@ void shift_rows(unsigned char *block, aes_block_size_t block_size) {
         }
     }
 }
- 
-/*
- * InvShiftRows: shift row i RIGHT by i positions.
- */
+
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
     int nb = block_size_to_nb(block_size);
     unsigned char tmp[64];
@@ -161,11 +128,7 @@ void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
         }
     }
 }
- 
-/*
- * MixColumns: multiply each column by the Rijndael MDS matrix.
- * Column c is contiguous: block[c*4 .. c*4+3] = [s0, s1, s2, s3].
- */
+
 void mix_columns(unsigned char *block, aes_block_size_t block_size) {
     int nb = block_size_to_nb(block_size);
     for (int col = 0; col < nb; col++) {
@@ -177,10 +140,7 @@ void mix_columns(unsigned char *block, aes_block_size_t block_size) {
         c[3] = gf_mul(0x03,s0) ^ s1            ^ s2            ^ gf_mul(0x02,s3);
     }
 }
- 
-/*
- * InvMixColumns: inverse MDS matrix multiplication.
- */
+
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
     int nb = block_size_to_nb(block_size);
     for (int col = 0; col < nb; col++) {
@@ -192,38 +152,26 @@ void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
         c[3] = gf_mul(0x0b,s0)^gf_mul(0x0d,s1)^gf_mul(0x09,s2)^gf_mul(0x0e,s3);
     }
 }
- 
-/* AddRoundKey: XOR state with round key (same column-major layout). */
+
 void add_round_key(unsigned char *block,
                    unsigned char *round_key,
                    aes_block_size_t block_size) {
     size_t len = block_size_to_bytes(block_size);
     for (size_t i = 0; i < len; i++) block[i] ^= round_key[i];
 }
- 
-/* ---- Key schedule helpers ---- */
+
 static void sub_word(unsigned char *w) {
     w[0]=sbox[w[0]]; w[1]=sbox[w[1]]; w[2]=sbox[w[2]]; w[3]=sbox[w[3]];
 }
 static void rot_word(unsigned char *w) {
     unsigned char t=w[0]; w[0]=w[1]; w[1]=w[2]; w[2]=w[3]; w[3]=t;
 }
- 
-/*
- * expand_key: Rijndael key schedule (Nk == Nb).
- *
- * Produces (Nr+1) round keys each of Nb words.
- * Words are stored sequentially; word i occupies bytes w[i*4 .. i*4+3].
- * Word c of round key r is w[(r*Nb + c)*4 .. +3], which IS column c
- * of that round key in column-major layout — no transpose required.
- *
- * Returns heap-allocated array of block_bytes*(Nr+1) bytes. Caller frees.
- */
+
 unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size) {
     int nb   = block_size_to_nb(block_size);
     int nk   = nb;
     int nr   = block_size_to_nr(block_size);
-    int total = nb * (nr + 1);  /* total words */
+    int total = nb * (nr + 1);
  
     unsigned char *w = (unsigned char *)malloc(total * 4);
     if (!w) { perror("malloc"); exit(1); }
@@ -245,11 +193,7 @@ unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size
     }
     return w;
 }
- 
-/*
- * aes_encrypt_block: full AES encryption.
- * Returns heap-allocated ciphertext. Caller must free.
- */
+
 unsigned char *aes_encrypt_block(unsigned char *plaintext,
                                   unsigned char *key,
                                   aes_block_size_t block_size) {
@@ -271,7 +215,6 @@ unsigned char *aes_encrypt_block(unsigned char *plaintext,
         add_round_key(state, &rk[round * bytes], block_size);
     }
  
-    /* Final round: no MixColumns */
     sub_bytes(state, block_size);
     shift_rows(state, block_size);
     add_round_key(state, &rk[nr * bytes], block_size);
@@ -279,11 +222,7 @@ unsigned char *aes_encrypt_block(unsigned char *plaintext,
     free(rk);
     return state;
 }
- 
-/*
- * aes_decrypt_block: full AES decryption (direct inverse cipher).
- * Returns heap-allocated plaintext. Caller must free.
- */
+
 unsigned char *aes_decrypt_block(unsigned char *ciphertext,
                                   unsigned char *key,
                                   aes_block_size_t block_size) {

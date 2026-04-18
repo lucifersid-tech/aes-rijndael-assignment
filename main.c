@@ -2,14 +2,7 @@
 #include <stdlib.h>
  
 #include "rijndael.h"
- 
-/*
- * print_block: print the 16 bytes of a block in flat sequential order.
- *
- * The AES state is stored column-major internally, but for display we
- * print the raw bytes [0..15] left-to-right, 4 per line.  This matches
- * the order boppreh/aes uses when it prints list(ct).
- */
+
 void print_block(unsigned char *block, aes_block_size_t block_size) {
   size_t len = 16; /* 128-bit block */
   for (size_t i = 0; i < len; i++) {

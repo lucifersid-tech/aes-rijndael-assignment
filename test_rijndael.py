@@ -1,36 +1,19 @@
-"""
-test_rijndael.py
-Unit tests for the C AES implementation via Python ctypes.
- 
-Compares each stage of the C implementation against the reference Python
-implementation (boppreh/aes, added as a git submodule under aes/).
- 
-Run:  python test_rijndael.py
-"""
- 
 import ctypes
 import os
 import random
 import sys
 import unittest
- 
-# ---------------------------------------------------------------------------
-# Load the shared library
-# ---------------------------------------------------------------------------
+
 LIB_PATH = os.path.join(os.path.dirname(__file__), "rijndael.so")
 if not os.path.exists(LIB_PATH):
     sys.exit(f"ERROR: {LIB_PATH} not found – run 'make' first.")
  
 lib = ctypes.CDLL(LIB_PATH)
  
-# Block size enum values (must match rijndael.h)
 AES_BLOCK_128 = 0
 AES_BLOCK_256 = 1
 AES_BLOCK_512 = 2
  
-# ---------------------------------------------------------------------------
-# ctypes return / argument types
-# ---------------------------------------------------------------------------
 lib.sub_bytes.argtypes         = [ctypes.c_char_p, ctypes.c_int]
 lib.sub_bytes.restype          = None
 lib.invert_sub_bytes.argtypes  = [ctypes.c_char_p, ctypes.c_int]
@@ -52,9 +35,6 @@ lib.aes_encrypt_block.restype  = ctypes.c_void_p
 lib.aes_decrypt_block.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
 lib.aes_decrypt_block.restype  = ctypes.c_void_p
  
-# ---------------------------------------------------------------------------
-# Reference AES S-box / inverse (Python reference values)
-# ---------------------------------------------------------------------------
 SBOX = [
     0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
     0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
