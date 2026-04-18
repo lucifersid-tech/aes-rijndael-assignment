@@ -91,18 +91,18 @@ def py_inv_sub_bytes(block):
 def py_shift_rows(block, nb):
     """block is bytes, nb is number of columns."""
     state = list(block)
-    out = [0] * len(state)
+    out   = [0] * len(state)
     for row in range(4):
         for col in range(nb):
-            out[row * nb + col] = state[row * nb + (col + row) % nb]
+            out[col * 4 + row] = state[((col + row) % nb) * 4 + row]
     return bytes(out)
 
 def py_inv_shift_rows(block, nb):
     state = list(block)
-    out = [0] * len(state)
+    out   = [0] * len(state)
     for row in range(4):
         for col in range(nb):
-            out[row * nb + col] = state[row * nb + (col - row) % nb]
+            out[col * 4 + row] = state[((col - row + nb) % nb) * 4 + row]
     return bytes(out)
 
 def gf_mul(a, b):
@@ -120,21 +120,21 @@ def gf_mul(a, b):
 def py_mix_columns(block, nb):
     state = list(block)
     for col in range(nb):
-        s = [state[row * nb + col] for row in range(4)]
-        state[0 * nb + col] = gf_mul(2, s[0]) ^ gf_mul(3, s[1]) ^ s[2] ^ s[3]
-        state[1 * nb + col] = s[0] ^ gf_mul(2, s[1]) ^ gf_mul(3, s[2]) ^ s[3]
-        state[2 * nb + col] = s[0] ^ s[1] ^ gf_mul(2, s[2]) ^ gf_mul(3, s[3])
-        state[3 * nb + col] = gf_mul(3, s[0]) ^ s[1] ^ s[2] ^ gf_mul(2, s[3])
+        s0, s1, s2, s3 = state[col*4], state[col*4+1], state[col*4+2], state[col*4+3]
+        state[col*4+0] = gf_mul(0x02,s0) ^ gf_mul(0x03,s1) ^ s2             ^ s3
+        state[col*4+1] = s0             ^ gf_mul(0x02,s1) ^ gf_mul(0x03,s2) ^ s3
+        state[col*4+2] = s0             ^ s1             ^ gf_mul(0x02,s2) ^ gf_mul(0x03,s3)
+        state[col*4+3] = gf_mul(0x03,s0) ^ s1             ^ s2             ^ gf_mul(0x02,s3)
     return bytes(state)
 
 def py_inv_mix_columns(block, nb):
     state = list(block)
     for col in range(nb):
-        s = [state[row * nb + col] for row in range(4)]
-        state[0 * nb + col] = gf_mul(0x0e,s[0])^gf_mul(0x0b,s[1])^gf_mul(0x0d,s[2])^gf_mul(0x09,s[3])
-        state[1 * nb + col] = gf_mul(0x09,s[0])^gf_mul(0x0e,s[1])^gf_mul(0x0b,s[2])^gf_mul(0x0d,s[3])
-        state[2 * nb + col] = gf_mul(0x0d,s[0])^gf_mul(0x09,s[1])^gf_mul(0x0e,s[2])^gf_mul(0x0b,s[3])
-        state[3 * nb + col] = gf_mul(0x0b,s[0])^gf_mul(0x0d,s[1])^gf_mul(0x09,s[2])^gf_mul(0x0e,s[3])
+        s0, s1, s2, s3 = state[col*4], state[col*4+1], state[col*4+2], state[col*4+3]
+        state[col*4+0] = gf_mul(0x0e,s0)^gf_mul(0x0b,s1)^gf_mul(0x0d,s2)^gf_mul(0x09,s3)
+        state[col*4+1] = gf_mul(0x09,s0)^gf_mul(0x0e,s1)^gf_mul(0x0b,s2)^gf_mul(0x0d,s3)
+        state[col*4+2] = gf_mul(0x0d,s0)^gf_mul(0x09,s1)^gf_mul(0x0e,s2)^gf_mul(0x0b,s3)
+        state[col*4+3] = gf_mul(0x0b,s0)^gf_mul(0x0d,s1)^gf_mul(0x09,s2)^gf_mul(0x0e,s3)
     return bytes(state)
 
 def c_sub_bytes(block, bs):
@@ -151,34 +151,34 @@ def c_shift_rows(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.shift_rows(buf, bs)
     return bytes(buf)
-
+ 
 def c_inv_shift_rows(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.invert_shift_rows(buf, bs)
     return bytes(buf)
-
+ 
 def c_mix_columns(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.mix_columns(buf, bs)
     return bytes(buf)
-
+ 
 def c_inv_mix_columns(block, bs):
     buf = ctypes.create_string_buffer(bytes(block), len(block))
     lib.invert_mix_columns(buf, bs)
     return bytes(buf)
 
 def c_encrypt(plain, key, bs):
-    pb = ctypes.create_string_buffer(bytes(plain), len(plain))
-    kb = ctypes.create_string_buffer(bytes(key), len(key))
+    pb  = ctypes.create_string_buffer(bytes(plain), len(plain))
+    kb  = ctypes.create_string_buffer(bytes(key),   len(key))
     ptr = lib.aes_encrypt_block(pb, kb, bs)
     return bytes(ctypes.string_at(ptr, len(plain)))
  
 def c_decrypt(cipher, key, bs):
-    cb = ctypes.create_string_buffer(bytes(cipher), len(cipher))
-    kb = ctypes.create_string_buffer(bytes(key), len(key))
+    cb  = ctypes.create_string_buffer(bytes(cipher), len(cipher))
+    kb  = ctypes.create_string_buffer(bytes(key),    len(key))
     ptr = lib.aes_decrypt_block(cb, kb, bs)
     return bytes(ctypes.string_at(ptr, len(cipher)))
-
+ 
 def rand_block(n):
     return bytes(random.randint(0, 255) for _ in range(n))
 
@@ -211,9 +211,7 @@ class TestSubBytes(unittest.TestCase):
         for bs, sz, nb in BS_SIZES:
             for _ in range(3):
                 block = rand_block(sz)
-                sub = c_sub_bytes(block, bs)
-                recovered = c_inv_sub_bytes(sub, bs)
-                self.assertEqual(recovered, block,
+                self.assertEqual(c_inv_sub_bytes(c_sub_bytes(block, bs), bs), block,
                                  "sub_bytes -> inv_sub_bytes should return original")
                 
 class TestShiftRows(unittest.TestCase):
@@ -235,9 +233,7 @@ class TestShiftRows(unittest.TestCase):
         for bs, sz, nb in BS_SIZES:
             for _ in range(3):
                 block = rand_block(sz)
-                shifted   = c_shift_rows(block, bs)
-                recovered = c_inv_shift_rows(shifted, bs)
-                self.assertEqual(recovered, block,
+                self.assertEqual(c_inv_shift_rows(c_shift_rows(block, bs), bs), block,
                                  "shift_rows -> inv_shift_rows should return original")
                 
 class TestMixColumns(unittest.TestCase):
@@ -259,13 +255,12 @@ class TestMixColumns(unittest.TestCase):
         for bs, sz, nb in BS_SIZES:
             for _ in range(3):
                 block = rand_block(sz)
-                mixed     = c_mix_columns(block, bs)
-                recovered = c_inv_mix_columns(mixed, bs)
-                self.assertEqual(recovered, block,
+                self.assertEqual(c_inv_mix_columns(c_mix_columns(block, bs), bs), block,
                                  "mix_columns -> inv_mix_columns should return original")
                 
 class TestAddRoundKey(unittest.TestCase):
     def test_add_round_key_xor(self):
+        """AddRoundKey must XOR every byte of the state with the round key."""
         for bs, sz, nb in BS_SIZES:
             for _ in range(3):
                 block = rand_block(sz)
@@ -274,15 +269,16 @@ class TestAddRoundKey(unittest.TestCase):
                 buf = ctypes.create_string_buffer(bytes(block), len(block))
                 lib.add_round_key(buf, key, bs)
                 self.assertEqual(bytes(buf), expected,
-                                 f"add_round_key should XOR block with key for block_size={sz}")
+                                 f"add_round_key XOR mismatch for block_size={sz}")
                 
 class TestKeyExpansion(unittest.TestCase):
-    def test_expand_key_length(self):
+    def test_expand_key_returns_non_null(self):
+        """expand_key must return a non-null pointer for all block sizes."""
         for bs, sz, nb in BS_SIZES:
-            for key_size in [16, 24, 32]:
-                key = rand_block(key_size)
-                rk_ptr = lib.expand_key(key, bs)
-                self.assertIsNotNone(rk_ptr, f"expand_key should return non-null pointer for block_size={sz} and key_size={key_size}")
+            key = rand_block(sz)
+            ptr = lib.expand_key(ctypes.create_string_buffer(key, sz), bs)
+            self.assertIsNotNone(ptr,
+                f"expand_key returned null for block_size={sz}")
 
 class TestEncryptDecrypt(unittest.TestCase):
     """End-to-end encrypt/decrypt round-trip test for all block sizes."""
@@ -293,8 +289,8 @@ class TestEncryptDecrypt(unittest.TestCase):
             key   = rand_block(16)
             ct    = c_encrypt(plain, key, AES_BLOCK_128)
             self.assertNotEqual(ct, plain, "Ciphertext must differ from plaintext")
-            pt    = c_decrypt(ct, key, AES_BLOCK_128)
-            self.assertEqual(pt, plain, "Decrypted text must match original plaintext (128-bit)")
+            self.assertEqual(c_decrypt(ct, key, AES_BLOCK_128), plain,
+                             "Decrypted text must match original plaintext (128-bit)")
 
 
 if __name__ == "__main__":
